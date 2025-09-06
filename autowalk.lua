@@ -1,84 +1,83 @@
-
-local gui = Instance.new("ScreenGui")
-gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-
-local frameIntro = Instance.new("Frame")
-frameIntro.Size = UDim2.new(0, 300, 0, 150)
-frameIntro.Position = UDim2.new(0.5, -150, 0.5, -75)
-frameIntro.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-frameIntro.Parent = gui
-
-local introText = Instance.new("TextLabel")
-introText.Size = UDim2.new(1, 0, 1, 0)
-introText.Text = "Selamat datang!"
-introText.TextColor3 = Color3.fromRGB(255,255,255)
-introText.BackgroundTransparency = 1
-introText.Parent = frameIntro
-
-local frameKey = Instance.new("Frame")
-frameKey.Size = UDim2.new(0, 300, 0, 150)
-frameKey.Position = UDim2.new(0.5, -150, 0.5, -75)
-frameKey.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-frameKey.Visible = false
-frameKey.Parent = gui
-
-local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(1, -20, 0, 30)
-keyBox.Position = UDim2.new(0, 10, 0, 40)
-keyBox.PlaceholderText = "Masukkan key..."
-keyBox.Parent = frameKey
-
-local lanjutButton = Instance.new("TextButton")
-lanjutButton.Size = UDim2.new(0, 100, 0, 30)
-lanjutButton.Position = UDim2.new(0.5, -50, 1, -40)
-lanjutButton.Text = "Lanjut"
-lanjutButton.Parent = frameKey
-
-local frameMenu = Instance.new("Frame")
-frameMenu.Size = UDim2.new(0, 300, 0, 150)
-frameMenu.Position = UDim2.new(0.5, -150, 0.5, -75)
-frameMenu.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-frameMenu.Visible = false
-frameMenu.Parent = gui
-
-local startButton = Instance.new("TextButton")
-startButton.Size = UDim2.new(0, 120, 0, 40)
-startButton.Position = UDim2.new(0.5, -60, 0.5, -20)
-startButton.Text = "Start Walk"
-startButton.Parent = frameMenu
-
-local KEY = "nazamganteng"
-task.delay(2, function()
-    frameIntro.Visible = false
-    frameKey.Visible = true
-end)
-lanjutButton.MouseButton1Click:Connect(function()
-    if keyBox.Text == KEY then
-        frameKey.Visible = false
-        frameMenu.Visible = true
-    else
-        keyBox.Text = "Key salah!"
-    end
-end)
-
-
+--// Services
 local PathfindingService = game:GetService("PathfindingService")
-local player = game.Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local hum = char:WaitForChild("Humanoid")
-local hrp = char:WaitForChild("HumanoidRootPart")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
-local checkpointsFolder = workspace:WaitForChild("Checkpoints")
-local checkpoints = checkpointsFolder:GetChildren()
-table.sort(checkpoints, function(a, b) return tonumber(a.Name) < tonumber(b.Name) end)
+--// GUI Setup
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "AutoWalkGUI"
 
-local currentCheckpoint = 1
-local walking = false
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 250, 0, 150)
+frame.Position = UDim2.new(0.5, -125, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.1
+
+-- Shadow
+local shadow = Instance.new("ImageLabel", frame)
+shadow.Size = UDim2.new(1, 20, 1, 20)
+shadow.Position = UDim2.new(0, -10, 0, -10)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.5
+shadow.ZIndex = 0
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "Auto Walk"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.TextColor3 = Color3.fromRGB(0, 200, 255) -- biru cerah
+title.ZIndex = 2
+
+-- Start Button
+local startButton = Instance.new("TextButton", frame)
+startButton.Size = UDim2.new(0.8, 0, 0, 40)
+startButton.Position = UDim2.new(0.1, 0, 0.5, -20)
+startButton.Text = "Start Walk"
+startButton.Font = Enum.Font.GothamBold
+startButton.TextSize = 20
+startButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+startButton.TextColor3 = Color3.fromRGB(20, 20, 20)
+startButton.AutoButtonColor = true
+startButton.ZIndex = 2
+startButton.BackgroundTransparency = 0.05
+startButton.BorderSizePixel = 0
+
+-- Hover effect
+startButton.MouseEnter:Connect(function()
+    startButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+end)
+startButton.MouseLeave:Connect(function()
+    startButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    startButton.TextColor3 = Color3.fromRGB(20, 20, 20)
+end)
+
+--// Logic
+local checkpointsFolder = workspace:FindFirstChild("Checkpoints")
+if not checkpointsFolder then
+    warn("❌ Tidak ada folder 'Checkpoints' di workspace!")
+end
+
+local checkpoints = checkpointsFolder and checkpointsFolder:GetChildren() or {}
+table.sort(checkpoints, function(a, b)
+    return tonumber(a.Name) < tonumber(b.Name)
+end)
+
+local function getChar()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    return char, hum, hrp
+end
 
 local function walkToCheckpoint(cp)
-    if not cp or walking then return end
-    walking = true
-
+    local _, hum, hrp = getChar()
     local path = PathfindingService:CreatePath({
         AgentRadius = 2,
         AgentHeight = 5,
@@ -90,6 +89,7 @@ local function walkToCheckpoint(cp)
     path:ComputeAsync(hrp.Position, cp.Position)
 
     if path.Status == Enum.PathStatus.Complete then
+        print("🚶 Menuju checkpoint:", cp.Name)
         for _, waypoint in ipairs(path:GetWaypoints()) do
             hum:MoveTo(waypoint.Position)
             hum.MoveToFinished:Wait()
@@ -98,15 +98,21 @@ local function walkToCheckpoint(cp)
             end
         end
     else
-        warn("Path gagal dibuat ke checkpoint: " .. cp.Name)
+        warn("❌ Path gagal dibuat ke checkpoint: " .. cp.Name)
     end
-
-    walking = false
 end
 
+-- Start walk button
 startButton.MouseButton1Click:Connect(function()
-    if not walking and currentCheckpoint <= #checkpoints then
-        walkToCheckpoint(checkpoints[currentCheckpoint])
-        currentCheckpoint += 1
-    end
+    task.spawn(function()
+        for i, cp in ipairs(checkpoints) do
+            walkToCheckpoint(cp)
+        end
+        print("✅ Semua checkpoint selesai!")
+    end)
+end)
+
+-- Respawn handling
+player.CharacterAdded:Connect(function()
+    print("🔄 Respawn terdeteksi → jalankan lagi tombol start.")
 end)
