@@ -1,118 +1,183 @@
---// Services
-local PathfindingService = game:GetService("PathfindingService")
+-- Anti duplicate
+if getgenv().NazamHubLoaded then
+    return
+else
+    getgenv().NazamHubLoaded = true
+end
+
+--// GUI Script By Nazam
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-
---// GUI Setup
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "AutoWalkGUI"
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 250, 0, 150)
-frame.Position = UDim2.new(0.5, -125, 0.5, -75)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-frame.BorderSizePixel = 0
-frame.BackgroundTransparency = 0.1
+-- Musik
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://10894413175" -- << ganti dengan ID musik Roblox
+sound.Looped = true
+sound.Volume = 5
+sound.Parent = game:GetService("SoundService")
+sound:Play()
 
--- Shadow
-local shadow = Instance.new("ImageLabel", frame)
-shadow.Size = UDim2.new(1, 20, 1, 20)
-shadow.Position = UDim2.new(0, -10, 0, -10)
-shadow.BackgroundTransparency = 1
-shadow.Image = "rbxassetid://1316045217"
-shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-shadow.ImageTransparency = 0.5
-shadow.ZIndex = 0
-
--- Title
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-title.Text = "Auto Walk"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 22
-title.TextColor3 = Color3.fromRGB(0, 200, 255) -- biru cerah
-title.ZIndex = 2
-
--- Start Button
-local startButton = Instance.new("TextButton", frame)
-startButton.Size = UDim2.new(0.8, 0, 0, 40)
-startButton.Position = UDim2.new(0.1, 0, 0.5, -20)
-startButton.Text = "Start Walk"
-startButton.Font = Enum.Font.GothamBold
-startButton.TextSize = 20
-startButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-startButton.TextColor3 = Color3.fromRGB(20, 20, 20)
-startButton.AutoButtonColor = true
-startButton.ZIndex = 2
-startButton.BackgroundTransparency = 0.05
-startButton.BorderSizePixel = 0
-
--- Hover effect
-startButton.MouseEnter:Connect(function()
-    startButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-    startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-end)
-startButton.MouseLeave:Connect(function()
-    startButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    startButton.TextColor3 = Color3.fromRGB(20, 20, 20)
-end)
-
---// Logic
-local checkpointsFolder = workspace:FindFirstChild("Checkpoints")
-if not checkpointsFolder then
-    warn("❌ Tidak ada folder 'Checkpoints' di workspace!")
+-- Fungsi animasi fade
+local TweenService = game:GetService("TweenService")
+local function fade(obj, targetTransparency, time)
+    local tween = TweenService:Create(obj, TweenInfo.new(time), {TextTransparency = targetTransparency})
+    tween:Play()
+    tween.Completed:Wait()
 end
 
-local checkpoints = checkpointsFolder and checkpointsFolder:GetChildren() or {}
-table.sort(checkpoints, function(a, b)
-    return tonumber(a.Name) < tonumber(b.Name)
+-- Intro Frame
+local introFrame = Instance.new("Frame", gui)
+introFrame.Size = UDim2.new(1,0,1,0)
+introFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+
+local introText = Instance.new("TextLabel", introFrame)
+introText.Size = UDim2.new(1,0,1,0)
+introText.BackgroundTransparency = 1
+introText.Text = "By Nazam"
+introText.TextColor3 = Color3.fromRGB(0,200,255)
+introText.Font = Enum.Font.GothamBold
+introText.TextScaled = true
+introText.TextTransparency = 1
+
+-- Key Frame
+local keyFrame = Instance.new("Frame", gui)
+keyFrame.Size = UDim2.new(0,400,0,250)
+keyFrame.Position = UDim2.new(0.5,-200,0.5,-125)
+keyFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+keyFrame.Visible = false
+keyFrame.Active = true
+keyFrame.Draggable = true
+
+Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0,15)
+local keyShadow = Instance.new("UIStroke", keyFrame)
+keyShadow.Thickness = 2
+keyShadow.Color = Color3.fromRGB(0,200,255)
+
+local keyBox = Instance.new("TextBox", keyFrame)
+keyBox.Size = UDim2.new(0.8,0,0,50)
+keyBox.Position = UDim2.new(0.1,0,0.3,0)
+keyBox.PlaceholderText = "Masukkan Key..."
+keyBox.Font = Enum.Font.Gotham
+keyBox.TextScaled = true
+keyBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+keyBox.TextColor3 = Color3.fromRGB(255,255,255)
+
+local keyBtn = Instance.new("TextButton", keyFrame)
+keyBtn.Size = UDim2.new(0.8,0,0,50)
+keyBtn.Position = UDim2.new(0.1,0,0.65,0)
+keyBtn.Text = "Lanjut"
+keyBtn.Font = Enum.Font.GothamBold
+keyBtn.TextScaled = true
+keyBtn.BackgroundColor3 = Color3.fromRGB(0,200,255)
+keyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+
+-- Menu Frame
+local menuFrame = Instance.new("Frame", gui)
+menuFrame.Size = UDim2.new(0,400,0,300)
+menuFrame.Position = UDim2.new(0.5,-200,0.5,-150)
+menuFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+menuFrame.Visible = false
+menuFrame.Active = true
+menuFrame.Draggable = true
+
+Instance.new("UICorner", menuFrame).CornerRadius = UDim.new(0,15)
+local menuShadow = Instance.new("UIStroke", menuFrame)
+menuShadow.Thickness = 2
+menuShadow.Color = Color3.fromRGB(0,200,255)
+
+local menuLabel = Instance.new("TextLabel", menuFrame)
+menuLabel.Size = UDim2.new(1,0,0,60)
+menuLabel.Text = "Menu Utama"
+menuLabel.BackgroundTransparency = 1
+menuLabel.TextColor3 = Color3.fromRGB(255,255,255)
+menuLabel.Font = Enum.Font.GothamBold
+menuLabel.TextScaled = true
+
+-- Tombol Musik
+local musicBtn = Instance.new("TextButton", menuFrame)
+musicBtn.Size = UDim2.new(0.8,0,0,50)
+musicBtn.Position = UDim2.new(0.1,0,0.7,0)
+musicBtn.Text = "Stop Music"
+musicBtn.Font = Enum.Font.GothamBold
+musicBtn.TextScaled = true
+musicBtn.BackgroundColor3 = Color3.fromRGB(0,200,255)
+musicBtn.TextColor3 = Color3.fromRGB(255,255,255)
+
+local isPlaying = true
+musicBtn.MouseButton1Click:Connect(function()
+    if isPlaying then
+        sound:Stop()
+        musicBtn.Text = "Play Music"
+        isPlaying = false
+    else
+        sound:Play()
+        musicBtn.Text = "Stop Music"
+        isPlaying = true
+    end
 end)
 
-local function getChar()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    return char, hum, hrp
-end
+-- Reopen button (floating)
+local reopenButton = Instance.new("TextButton", gui)
+reopenButton.Size = UDim2.new(0,100,0,30)
+reopenButton.Position = UDim2.new(0.5,-50,0,5)
+reopenButton.Text = "Open Menu"
+reopenButton.BackgroundColor3 = Color3.fromRGB(0,200,255)
+reopenButton.TextColor3 = Color3.fromRGB(255,255,255)
+reopenButton.Font = Enum.Font.GothamBold
+reopenButton.Visible = false
+reopenButton.Active = true
+reopenButton.Draggable = true
 
-local function walkToCheckpoint(cp)
-    local _, hum, hrp = getChar()
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        AgentJumpHeight = 10,
-        AgentMaxSlope = 45
-    })
-
-    path:ComputeAsync(hrp.Position, cp.Position)
-
-    if path.Status == Enum.PathStatus.Complete then
-        print("🚶 Menuju checkpoint:", cp.Name)
-        for _, waypoint in ipairs(path:GetWaypoints()) do
-            hum:MoveTo(waypoint.Position)
-            hum.MoveToFinished:Wait()
-            if waypoint.Action == Enum.PathWaypointAction.Jump then
-                hum.Jump = true
+-- Tutup menu dengan klik luar
+local function closeMenuWhenOutsideClick(frame)
+    local UIS = game:GetService("UserInputService")
+    UIS.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mousePos = UIS:GetMouseLocation()
+            local absPos = frame.AbsolutePosition
+            local absSize = frame.AbsoluteSize
+            if not (mousePos.X >= absPos.X and mousePos.X <= absPos.X + absSize.X
+                and mousePos.Y >= absPos.Y and mousePos.Y <= absPos.Y + absSize.Y) then
+                frame.Visible = false
+                reopenButton.Visible = true
             end
         end
-    else
-        warn("❌ Path gagal dibuat ke checkpoint: " .. cp.Name)
-    end
-end
-
--- Start walk button
-startButton.MouseButton1Click:Connect(function()
-    task.spawn(function()
-        for i, cp in ipairs(checkpoints) do
-            walkToCheckpoint(cp)
-        end
-        print("✅ Semua checkpoint selesai!")
     end)
+end
+closeMenuWhenOutsideClick(menuFrame)
+
+-- Logika intro
+task.spawn(function()
+    fade(introText, 0, 0) -- mulai invisible
+    fade(introText, 0, 0.5)
+    fade(introText, 0, 1)
+    fade(introText, 0, 2)
+    introText.TextTransparency = 1
+    introFrame:Destroy()
+    keyFrame.Visible = true
 end)
 
--- Respawn handling
-player.CharacterAdded:Connect(function()
-    print("🔄 Respawn terdeteksi → jalankan lagi tombol start.")
+-- Sistem key
+local KEY = "nazamganteng"
+local keyEntered = false
+keyBtn.MouseButton1Click:Connect(function()
+    if keyBox.Text == KEY then
+        keyEntered = true
+        keyFrame.Visible = false
+        menuFrame.Visible = true
+    else
+        keyBox.Text = "❌ Key salah!"
+    end
+end)
+
+-- Buka menu lagi
+reopenButton.MouseButton1Click:Connect(function()
+    if keyEntered then
+        reopenButton.Visible = false
+        menuFrame.Visible = true
+    else
+        reopenButton.Visible = false
+        keyFrame.Visible = true
+    end
 end)
