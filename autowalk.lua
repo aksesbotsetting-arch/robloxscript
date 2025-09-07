@@ -4,27 +4,38 @@ getgenv().NazamHubLoaded = true
 
 -- Services
 local Players = game:GetService("Players")
+local PathfindingService = game:GetService("PathfindingService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local player = Players.LocalPlayer
 
--- GUI Setup
+-- Player setup
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Config Auto-Run
+local speed = 16
+local jumpHeight = 50
+local checkpointFolder = workspace:FindFirstChild("Checkpoints")
+local delayOnObstacle = 0.5
+
+--=====================--
+-- GUI SETUP
+--=====================--
 local gui = Instance.new("ScreenGui")
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
---=====================--
---  AUDIO SETUP
---=====================--
-local sound = Instance.new("Sound")
-sound.SoundId = "rbxassetid://10894413175" -- ganti dengan ID musik
-sound.Looped = true
-sound.Volume = 1
-sound.Parent = game:GetService("SoundService")
+local function tweenTransparency(obj, target, time)
+    local tween = TweenService:Create(obj, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextTransparency = target})
+    tween:Play()
+    tween.Completed:Wait()
+end
 
---=====================--
---  INTRO ANIMATION
---=====================--
+-- Intro
 local introFrame = Instance.new("Frame", gui)
 introFrame.Size = UDim2.new(1,0,1,0)
 introFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
@@ -38,19 +49,11 @@ introText.Font = Enum.Font.GothamBold
 introText.TextScaled = true
 introText.TextTransparency = 1
 
-local function tweenTransparency(obj, target, time)
-    local tween = TweenService:Create(obj, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextTransparency = target})
-    tween:Play()
-    tween.Completed:Wait()
-end
-
---=====================--
---  KEY FRAME
---=====================--
+-- Key Frame
 local keyFrame = Instance.new("Frame", gui)
 keyFrame.Size = UDim2.new(0,400,0,250)
 keyFrame.Position = UDim2.new(0.5,-200,0.5,-125)
-keyFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+keyFrame.BackgroundColor3 = Color3.fromRGB(15,15,15)
 keyFrame.Visible = false
 keyFrame.Active = true
 keyFrame.Draggable = true
@@ -65,7 +68,7 @@ keyBox.Position = UDim2.new(0.1,0,0.3,0)
 keyBox.PlaceholderText = "Masukkan Key..."
 keyBox.Font = Enum.Font.Gotham
 keyBox.TextScaled = true
-keyBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+keyBox.BackgroundColor3 = Color3.fromRGB(30,30,30)
 keyBox.TextColor3 = Color3.fromRGB(255,255,255)
 Instance.new("UICorner", keyBox).CornerRadius = UDim.new(0,8)
 
@@ -79,13 +82,11 @@ keyBtn.BackgroundColor3 = Color3.fromRGB(0,200,255)
 keyBtn.TextColor3 = Color3.fromRGB(255,255,255)
 Instance.new("UICorner", keyBtn).CornerRadius = UDim.new(0,8)
 
---=====================--
---  MENU FRAME
---=====================--
+-- Menu Frame
 local menuFrame = Instance.new("Frame", gui)
 menuFrame.Size = UDim2.new(0,400,0,300)
 menuFrame.Position = UDim2.new(0.5,-200,0.5,-150)
-menuFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+menuFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
 menuFrame.Visible = false
 menuFrame.Active = true
 menuFrame.Draggable = true
@@ -94,7 +95,6 @@ local menuStroke = Instance.new("UIStroke", menuFrame)
 menuStroke.Color = Color3.fromRGB(0,200,255)
 menuStroke.Thickness = 2
 
--- Menu Label
 local menuLabel = Instance.new("TextLabel", menuFrame)
 menuLabel.Size = UDim2.new(1,0,0,60)
 menuLabel.Text = "Menu Utama"
@@ -103,52 +103,16 @@ menuLabel.TextColor3 = Color3.fromRGB(255,255,255)
 menuLabel.Font = Enum.Font.GothamBold
 menuLabel.TextScaled = true
 
--- General Info / Tulisan Umum
-local generalLabel = Instance.new("TextLabel", menuFrame)
-generalLabel.Size = UDim2.new(0.9,0,0,40)
-generalLabel.Position = UDim2.new(0.05,0,0.1,0)
-generalLabel.Text = "Selamat Datang di Nazam Hub!"
-generalLabel.BackgroundTransparency = 1
-generalLabel.TextColor3 = Color3.fromRGB(0,200,255)
-generalLabel.Font = Enum.Font.Gotham
-generalLabel.TextScaled = true
+local startBtn = Instance.new("TextButton", menuFrame)
+startBtn.Size = UDim2.new(0.8,0,0,50)
+startBtn.Position = UDim2.new(0.1,0,0.7,0)
+startBtn.Text = "Start Walk"
+startBtn.Font = Enum.Font.GothamBold
+startBtn.TextScaled = true
+startBtn.BackgroundColor3 = Color3.fromRGB(0,200,255)
+startBtn.TextColor3 = Color3.fromRGB(255,255,255)
+Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0,8)
 
-local versionLabel = Instance.new("TextLabel", menuFrame)
-versionLabel.Size = UDim2.new(0.9,0,0,30)
-versionLabel.Position = UDim2.new(0.05,0,0.2,0)
-versionLabel.Text = "Versi: 1.0"
-versionLabel.BackgroundTransparency = 1
-versionLabel.TextColor3 = Color3.fromRGB(255,255,255)
-versionLabel.Font = Enum.Font.Gotham
-versionLabel.TextScaled = true
-
--- Music Button
-local musicBtn = Instance.new("TextButton", menuFrame)
-musicBtn.Size = UDim2.new(0.8,0,0,50)
-musicBtn.Position = UDim2.new(0.1,0,0.7,0)
-musicBtn.Text = "Stop Music"
-musicBtn.Font = Enum.Font.GothamBold
-musicBtn.TextScaled = true
-musicBtn.BackgroundColor3 = Color3.fromRGB(0,200,255)
-musicBtn.TextColor3 = Color3.fromRGB(255,255,255)
-Instance.new("UICorner", musicBtn).CornerRadius = UDim.new(0,8)
-
-local isPlaying = true
-musicBtn.MouseButton1Click:Connect(function()
-    if isPlaying then
-        sound:Stop()
-        musicBtn.Text = "Play Music"
-        isPlaying = false
-    else
-        sound:Play()
-        musicBtn.Text = "Stop Music"
-        isPlaying = true
-    end
-end)
-
---=====================--
---  REOPEN BUTTON
---=====================--
 local reopenBtn = Instance.new("TextButton", gui)
 reopenBtn.Size = UDim2.new(0,120,0,30)
 reopenBtn.Position = UDim2.new(0.5,-60,0,5)
@@ -159,9 +123,30 @@ reopenBtn.Font = Enum.Font.GothamBold
 reopenBtn.Visible = false
 Instance.new("UICorner", reopenBtn).CornerRadius = UDim.new(0,6)
 
---=====================--
---  OUTSIDE CLICK CLOSE
---=====================--
+-- Key system
+local KEY = "nazamganteng"
+local keyEntered = false
+
+keyBtn.MouseButton1Click:Connect(function()
+    if keyBox.Text == KEY then
+        keyEntered = true
+        keyFrame.Visible = false
+        menuFrame.Visible = true
+    else
+        keyBox.Text = "❌ Key Salah!"
+    end
+end)
+
+reopenBtn.MouseButton1Click:Connect(function()
+    reopenBtn.Visible = false
+    if keyEntered then
+        menuFrame.Visible = true
+    else
+        keyFrame.Visible = true
+    end
+end)
+
+-- Close menu click luar
 local function closeMenuWhenOutsideClick(frame)
     UserInputService.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -179,28 +164,56 @@ end
 closeMenuWhenOutsideClick(menuFrame)
 closeMenuWhenOutsideClick(keyFrame)
 
---=====================--
---  KEY SYSTEM
---=====================--
-local KEY = "nazamganteng"
-local keyEntered = false
-
-keyBtn.MouseButton1Click:Connect(function()
-    if keyBox.Text == KEY then
-        keyEntered = true
-        keyFrame.Visible = false
-        menuFrame.Visible = true
-        reopenBtn.Visible = false
-    else
-        keyBox.Text = "❌ Key Salah!"
-    end
+-- Intro animation
+task.spawn(function()
+    tweenTransparency(introText, 0, 1)
+    task.wait(1.5)
+    tweenTransparency(introText, 1, 1)
+    introFrame:Destroy()
+    keyFrame.Visible = true
 end)
 
-reopenBtn.MouseButton1Click:Connect(function()
-    reopenBtn.Visible = false
-    if keyEntered then
-        menuFrame.Visible = true
-    else
-        keyFrame.Visible = true
+-- Auto-run functions
+local function detectObstacle(distance)
+    distance = distance or 5
+    local rayOrigin = rootPart.Position + Vector3.new(0,2,0)
+    local rayDirection = rootPart.CFrame.LookVector * distance
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    return Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+end
+
+local function moveToTarget(targetPosition)
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        AgentJumpHeight = jumpHeight,
+        AgentMaxSlope = 45
+    })
+    path:ComputeAsync(rootPart.Position, targetPosition)
+    for _, wp in ipairs(path:GetWaypoints()) do
+        if wp.Action == Enum.PathWaypointAction.Jump then
+            if detectObstacle() then task.wait(delayOnObstacle) end
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+        humanoid:MoveTo(wp.Position)
+        humanoid.MoveToFinished:Wait()
     end
+end
+
+local function autoRunCheckpoints()
+    if not checkpointFolder then return end
+    local checkpoints = {}
+    for _, cp in ipairs(checkpointFolder:GetChildren()) do table.insert(checkpoints, cp) end
+    table.sort(checkpoints, function(a,b) return a.Name < b.Name end)
+    for _, cp in ipairs(checkpoints) do
+        moveToTarget(cp.Position)
+        task.wait(0.2)
+    end
+end
+
+startBtn.MouseButton1Click:Connect(function()
+    autoRunCheckpoints()
 end)
