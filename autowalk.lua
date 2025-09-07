@@ -22,33 +22,27 @@ local delayOnObstacle = 0.5
 
 -- Checkpoints
 local checkpointFolder = workspace:FindFirstChild("Checkpoints")
-if not checkpointFolder then
-    warn("Folder Checkpoints tidak ditemukan!")
-    return
-end
-
--- Urutkan checkpoints
 local checkpoints = {}
-for _, cp in ipairs(checkpointFolder:GetChildren()) do
-    if cp.Name:match("^POS%d+$") then
-        table.insert(checkpoints, cp)
+if checkpointFolder then
+    for _, cp in ipairs(checkpointFolder:GetChildren()) do
+        if cp.Name:match("^POS%d+$") then
+            table.insert(checkpoints, cp)
+        end
     end
+    table.sort(checkpoints, function(a,b)
+        return tonumber(a.Name:match("%d+")) < tonumber(b.Name:match("%d+"))
+    end)
+else
+    warn("Folder Checkpoints tidak ditemukan! Auto-run tidak aktif.")
 end
-table.sort(checkpoints, function(a,b)
-    return tonumber(a.Name:match("%d+")) < tonumber(b.Name:match("%d+"))
-end)
 
--- Tentukan checkpoint saat ini
 local currentCheckpointIndex = 1
 
---=====================--
 -- GUI Setup
---=====================--
 local gui = Instance.new("ScreenGui")
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- Tween function
 local function tweenTransparency(obj, target, time)
     local tween = TweenService:Create(obj, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {TextTransparency = target})
     tween:Play()
@@ -115,7 +109,6 @@ local menuStroke = Instance.new("UIStroke", menuFrame)
 menuStroke.Color = Color3.fromRGB(0,200,255)
 menuStroke.Thickness = 2
 
--- Menu Label
 local menuLabel = Instance.new("TextLabel", menuFrame)
 menuLabel.Size = UDim2.new(1,0,0,50)
 menuLabel.Text = "Menu Utama"
@@ -201,9 +194,7 @@ task.spawn(function()
     keyFrame.Visible = true
 end)
 
---=====================--
 -- Auto-Run Pathfinding
---=====================--
 local function detectObstacle(distance)
     distance = distance or 5
     local rayOrigin = rootPart.Position + Vector3.new(0,2,0)
@@ -211,10 +202,9 @@ local function detectObstacle(distance)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterDescendantsInstances = {character}
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    return Workspace:Raycast(ray
-        --=====================--
--- Auto-Run Pathfinding (lanjutan)
---=====================--
+    return Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+end
+
 local function moveToTarget(targetPosition)
     local path = PathfindingService:CreatePath({
         AgentRadius = 2,
@@ -235,7 +225,7 @@ local function moveToTarget(targetPosition)
     end
 end
 
--- Fungsi auto-run antar checkpoint
+-- Auto-run antar checkpoint
 local function autoRunBetween(startIndex, endIndex)
     if startIndex ~= currentCheckpointIndex then
         warn("Tidak bisa mulai dari checkpoint ini. Harus sesuai urutan!")
@@ -249,7 +239,7 @@ local function autoRunBetween(startIndex, endIndex)
     print("Sampai tujuan! Klik tombol selanjutnya untuk lanjut.")
 end
 
--- Generate tombol otomatis sesuai urutan checkpoint
+-- Generate tombol otomatis
 for i = 1, #checkpoints-1 do
     local btn = Instance.new("TextButton", menuFrame)
     btn.Size = UDim2.new(0.8,0,0,40)
@@ -262,9 +252,6 @@ for i = 1, #checkpoints-1 do
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
 
     btn.MouseButton1Click:Connect(function()
-        local startIndex = i
-        local endIndex = i+1
-        autoRunBetween(startIndex, endIndex)
+        autoRunBetween(i, i+1)
     end)
 end
-
